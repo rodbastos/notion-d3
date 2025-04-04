@@ -50,10 +50,7 @@ export default function NotionToD3Converter() {
         if (storedRolesDatabaseId) setRolesDatabaseId(storedRolesDatabaseId);
         if (storedCirclesDatabaseId) setCirclesDatabaseId(storedCirclesDatabaseId);
 
-        // Verifica se há uma chave no ambiente
-        if (process.env.NEXT_PUBLIC_NOTION_KEY) {
-            setIsUsingEnvKey(true);
-        }
+        // Removemos a verificação da chave do ambiente pois agora é server-side
     }, []);
 
     useEffect(() => {
@@ -343,10 +340,8 @@ export default function NotionToD3Converter() {
     };
 
     const fetchDataFromNotion = async (databaseId: string, isRolesData: boolean) => {
-        const apiKey = notionKey || process.env.NEXT_PUBLIC_NOTION_KEY;
-        
-        if (!apiKey) {
-            setError('Por favor, insira sua chave da API do Notion ou configure a variável de ambiente NEXT_PUBLIC_NOTION_KEY.');
+        if (!notionKey) {
+            setError('Por favor, insira sua chave da API do Notion.');
             return;
         }
 
@@ -361,92 +356,24 @@ export default function NotionToD3Converter() {
                 },
                 body: JSON.stringify({
                     databaseId,
-                    notionKey: apiKey,
+                    notionKey,
                 }),
             });
 
             if (!response.ok) {
-                throw new Error(`Erro ao buscar dados do Notion (Status: ${response.status})`);
+                throw new Error(`HTTP error! status: ${response.status}`);
             }
 
             const data = await response.json();
-            console.log('Dados brutos do Notion:', data);
-
-            if (!data.results || !Array.isArray(data.results)) {
-                throw new Error('Dados recebidos do Notion são inválidos');
-            }
-
-            const results = data.results;
-            const processedResults = await Promise.all(results.map(async (item: any) => {
-                if (!item.properties) {
-                    console.warn('Item sem propriedades:', item);
-                    return null;
-                }
-
-                const properties = item.properties;
-                console.log('Propriedades do item:', properties);
-                console.log('Campo Pessoas alocadas:', properties['Pessoas alocadas']);
-                console.log('Campo Projetos:', properties.Projetos);
-                
-                if (isRolesData) {
-                    // Fetch person data for "Pessoas alocadas"
-                    let peopleData: { id: string; title: string }[] = [];
-                    if (properties['Pessoas alocadas']?.relation) {
-                        peopleData = await Promise.all(properties['Pessoas alocadas'].relation.map(async (person: any) => {
-                            try {
-                                const personResponse = await fetch(`/api/notion?pageId=${person.id}&notionKey=${encodeURIComponent(apiKey)}`);
-                                const personData = await personResponse.json();
-                                return {
-                                    id: person.id,
-                                    title: personData.properties?.Name?.title?.[0]?.plain_text || 
-                                          personData.properties?.Nome?.title?.[0]?.plain_text || 
-                                          personData.properties?.name?.title?.[0]?.plain_text || 
-                                          'Sem nome'
-                                };
-                            } catch (error) {
-                                console.error('Erro ao buscar dados da pessoa:', error);
-                                return {
-                                    id: person.id,
-                                    title: 'Erro ao carregar'
-                                };
-                            }
-                        }));
-                    }
-
-                    // Para a base de papéis
-                    const roleData = {
-                        RoleID: properties.RoleID?.unique_id?.number || '',
-                        RoleName: properties.Papel?.title?.[0]?.plain_text || properties.RoleName?.rich_text?.[0]?.plain_text || '',
-                        CircleID: properties.CircleID?.rollup?.array?.[0]?.unique_id?.number || '',
-                        Purpose: properties.Propósito?.rich_text?.[0]?.plain_text || '',
-                        Responsibilities: properties.Responsabilidades?.rich_text?.[0]?.plain_text || '',
-                        'Pessoas alocadas': peopleData,
-                        pageId: item.id // Store the actual Notion page ID
-                    };
-                    console.log('Dados processados do papel:', roleData);
-                    return roleData;
-                } else {
-                    // Para a base de círculos
-                    return {
-                        CircleID: properties.CircleID?.unique_id?.number || '',
-                        CircleName: properties.CircleName?.title?.[0]?.plain_text || '',
-                        Purpose: properties.Propósito?.rich_text?.[0]?.plain_text || '',
-                        Responsibilities: properties.Responsabilidades?.rich_text?.[0]?.plain_text || '',
-                    };
-                }
-            }));
-
-            const filteredResults = processedResults.filter(Boolean);
-
+            
             if (isRolesData) {
-                setRolesData(filteredResults);
+                setRolesData(data);
             } else {
-                setCirclesData(filteredResults);
+                setCirclesData(data);
             }
-
-        } catch (error: any) {
-            console.error('Erro ao processar dados:', error);
-            setError(error.message);
+        } catch (error) {
+            console.error('Error fetching data:', error);
+            setError('Erro ao buscar dados do Notion. Verifique suas credenciais e tente novamente.');
         } finally {
             setLoading(false);
         }

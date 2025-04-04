@@ -54,9 +54,11 @@ npm run dev
 
 ## Environment Variables
 
-- `NEXT_PUBLIC_NOTION_KEY`: Your Notion API integration token
+- `NOTION_KEY`: Your Notion API integration token (this is a server-side secret)
 - `NEXT_PUBLIC_ROLES_DATABASE_ID` (optional): Default Roles database ID
 - `NEXT_PUBLIC_CIRCLES_DATABASE_ID` (optional): Default Circles database ID
+
+> **Security Note**: The `NOTION_KEY` is a server-side secret and should never be exposed to the client. It's used only in the API routes to make authenticated requests to Notion.
 
 ## Deploy on Vercel
 
