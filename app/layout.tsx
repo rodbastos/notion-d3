@@ -7,7 +7,7 @@ const inter = Inter({ subsets: ['latin'] })
 
 export const metadata: Metadata = {
   title: 'Notion to D3.js Converter',
-  description: 'Convert Notion data to D3.js compatible CSV format',
+  description: 'Interactive D3.js visualization of Notion database hierarchies',
 }
 
 export default function RootLayout({
@@ -17,7 +17,17 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en">
-      <body className={inter.className}>{children}</body>
+      <body className={inter.className}>
+        {children}
+        <a
+          href="https://github.com/rodbastos/notion-d3"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="fixed bottom-4 right-4 text-sm text-gray-500 hover:text-gray-700"
+        >
+          Made with ❤️ by T3
+        </a>
+      </body>
     </html>
   )
 } 

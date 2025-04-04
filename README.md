@@ -1,71 +1,68 @@
 # Notion to D3.js Converter
 
-This application allows you to convert data from Notion databases into CSV format that can be used with D3.js visualizations.
+An interactive web application that visualizes Notion database hierarchies using D3.js. This tool creates dynamic, interactive circle visualizations directly from your Notion data, allowing you to explore and understand your organizational structure.
 
 ## Features
 
-- Connect to Notion API using your API key
-- Fetch data from Roles and Circles databases
-- Convert the data into CSV format
-- Save credentials in localStorage for convenience
-- Modern UI with responsive design
+- Real-time visualization of Notion database hierarchies
+- Interactive circle visualization with D3.js
+- Search functionality for roles and people
+- Responsive design with modern UI
+- Optional environment configuration
 
-## Getting Started
+## Required Notion Database Structure
 
-### Prerequisites
+### Circles Database
+Required properties:
+- `CircleName` (title): Name of the circle
+- `CircleID` (number): Unique identifier for the circle
+- `Purpose` (text, optional): The circle's purpose
+- `Responsibilities` (text, optional): The circle's responsibilities
+- `Projects` (text, optional): Related projects
 
-- Node.js 18.0 or later
-- npm or yarn
-- A Notion API key
-- Notion database IDs for Roles and Circles
+### Roles Database
+Required properties:
+- `RoleName` (title): Name of the role
+- `RoleID` (number): Unique identifier for the role
+- `CircleID` (number): ID of the circle this role belongs to
+- `Purpose` (text, optional): The role's purpose
+- `Responsibilities` (text, optional): List of responsibilities
+- `Pessoas alocadas` (relation): Relation to a People/Users database
+- `Area` (text, optional): Area or department
 
-### Installation
+## Setup
 
-1. Clone the repository:
+1. Clone the repository
 ```bash
-git clone <repository-url>
-cd notion-to-d3-converter
+git clone https://github.com/rodbastos/notion-d3.git
+cd notion-d3
 ```
 
-2. Install dependencies:
+2. Install dependencies
 ```bash
 npm install
-# or
-yarn install
 ```
 
-3. Run the development server:
+3. Set up environment variables
+- Copy `.env.example` to `.env.local`
+- Add your Notion API key
+
+4. Run the development server
 ```bash
 npm run dev
-# or
-yarn dev
 ```
-
-4. Open [http://localhost:3000](http://localhost:3000) in your browser.
-
-## Deployment
-
-This application is configured to be deployed on Vercel. To deploy:
-
-1. Push your code to a GitHub repository
-2. Go to [Vercel](https://vercel.com)
-3. Import your repository
-4. Follow the deployment steps
-
-The application will be automatically deployed and you'll get a URL where it's hosted.
-
-## Usage
-
-1. Enter your Notion API key
-2. Enter the database IDs for both Roles and Circles databases
-3. Click "Buscar Dados do Notion" to fetch the data
-4. Copy the generated CSV data and save it to files
-5. Use the CSV files with your D3.js visualization
 
 ## Environment Variables
 
-No environment variables are required for this application as it uses client-side storage for the API key and database IDs.
+- `NEXT_PUBLIC_NOTION_KEY`: Your Notion API integration token
+- `NEXT_PUBLIC_ROLES_DATABASE_ID` (optional): Default Roles database ID
+- `NEXT_PUBLIC_CIRCLES_DATABASE_ID` (optional): Default Circles database ID
 
-## License
+## Deploy on Vercel
 
-This project is licensed under the MIT License. 
+The easiest way to deploy this app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js).
+
+1. Push your code to GitHub
+2. Import the project in Vercel
+3. Add the required environment variables
+4. Deploy! 
