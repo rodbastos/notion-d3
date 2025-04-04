@@ -73,4 +73,11 @@ Campos obrigatórios:
 
 ## Deploy
 
-O projeto pode ser facilmente implantado em qualquer plataforma que suporte Next.js, como Vercel, Netlify ou Railway. Não é necessário configurar nenhuma variável de ambiente no servidor, pois toda a autenticação é feita diretamente no frontend. 
+O projeto pode ser facilmente implantado em qualquer plataforma que suporte Next.js, como Vercel, Netlify ou Railway. Não é necessário configurar nenhuma variável de ambiente no servidor, pois toda a autenticação é feita diretamente no frontend.
+
+### Nota sobre o Deploy
+
+Para garantir que o deploy funcione corretamente, certifique-se de que:
+1. O projeto foi instalado com todas as dependências, incluindo `@types/d3`
+2. O build local está funcionando sem erros de TypeScript
+3. Não há variáveis de ambiente necessárias no servidor 
