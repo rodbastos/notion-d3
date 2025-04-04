@@ -28,6 +28,17 @@ interface CircleData {
     Projects?: string;
 }
 
+interface HierarchyNode {
+    name: string;
+    id?: string;
+    purpose?: string;
+    responsibilities?: string;
+    'Pessoas alocadas'?: { id: string; title?: string }[];
+    pageId?: string;
+    value?: number;
+    children?: HierarchyNode[];
+}
+
 export default function NotionToD3Converter() {
     const [notionKey, setNotionKey] = useState('');
     const [rolesDatabaseId, setRolesDatabaseId] = useState('');
@@ -50,7 +61,10 @@ export default function NotionToD3Converter() {
         if (storedRolesDatabaseId) setRolesDatabaseId(storedRolesDatabaseId);
         if (storedCirclesDatabaseId) setCirclesDatabaseId(storedCirclesDatabaseId);
 
-        // Removemos a verificação da chave do ambiente pois agora é server-side
+        // Verifica se há uma chave no ambiente
+        if (process.env.NEXT_PUBLIC_NOTION_KEY) {
+            setIsUsingEnvKey(true);
+        }
     }, []);
 
     useEffect(() => {
@@ -102,7 +116,7 @@ export default function NotionToD3Converter() {
         }
 
         // Cria a hierarquia de dados
-        const hierarchy = {
+        const hierarchy: HierarchyNode = {
             name: "Organização",
             children: circlesData.map(circle => ({
                 name: circle.CircleName,
@@ -128,14 +142,14 @@ export default function NotionToD3Converter() {
         };
 
         // Cria o layout de empacotamento
-        const pack = d3.pack()
+        const pack = d3.pack<HierarchyNode>()
             .size([width - margin.left - margin.right, height - margin.top - margin.bottom])
             .padding(3);
 
         // Cria a hierarquia e aplica o layout
-        const root = d3.hierarchy(hierarchy)
+        const root = d3.hierarchy<HierarchyNode>(hierarchy)
             .sum(d => d.value || 0)
-            .sort((a, b) => b.value - a.value);
+            .sort((a, b) => (b.value || 0) - (a.value || 0));
 
         const nodes = pack(root).descendants();
 
@@ -144,7 +158,7 @@ export default function NotionToD3Converter() {
             .attr("transform", `translate(${margin.left},${margin.top})`);
 
         // Adiciona os círculos
-        const node = g.selectAll("g")
+        const node = g.selectAll<SVGGElement, d3.HierarchyNode<HierarchyNode>>("g")
             .data(nodes)
             .enter()
             .append("g")
@@ -177,7 +191,7 @@ export default function NotionToD3Converter() {
 
         // Atualiza o highlight baseado no termo de busca
         const updateHighlight = (searchTerm: string) => {
-            node.selectAll("circle")
+            node.selectAll<SVGCircleElement, d3.HierarchyNode<HierarchyNode>>("circle")
                 .style("fill", d => {
                     if (d.depth === 0) return "#4f46e5"; // Círculo raiz
                     if (d.depth === 1) return "#10b981"; // Círculos
@@ -340,8 +354,10 @@ export default function NotionToD3Converter() {
     };
 
     const fetchDataFromNotion = async (databaseId: string, isRolesData: boolean) => {
-        if (!notionKey) {
-            setError('Por favor, insira sua chave da API do Notion.');
+        const apiKey = notionKey || process.env.NEXT_PUBLIC_NOTION_KEY;
+        
+        if (!apiKey) {
+            setError('Por favor, insira sua chave da API do Notion ou configure a variável de ambiente NEXT_PUBLIC_NOTION_KEY.');
             return;
         }
 
@@ -356,24 +372,92 @@ export default function NotionToD3Converter() {
                 },
                 body: JSON.stringify({
                     databaseId,
-                    notionKey,
+                    notionKey: apiKey,
                 }),
             });
 
             if (!response.ok) {
-                throw new Error(`HTTP error! status: ${response.status}`);
+                throw new Error(`Erro ao buscar dados do Notion (Status: ${response.status})`);
             }
 
             const data = await response.json();
-            
-            if (isRolesData) {
-                setRolesData(data);
-            } else {
-                setCirclesData(data);
+            console.log('Dados brutos do Notion:', data);
+
+            if (!data.results || !Array.isArray(data.results)) {
+                throw new Error('Dados recebidos do Notion são inválidos');
             }
-        } catch (error) {
-            console.error('Error fetching data:', error);
-            setError('Erro ao buscar dados do Notion. Verifique suas credenciais e tente novamente.');
+
+            const results = data.results;
+            const processedResults = await Promise.all(results.map(async (item: any) => {
+                if (!item.properties) {
+                    console.warn('Item sem propriedades:', item);
+                    return null;
+                }
+
+                const properties = item.properties;
+                console.log('Propriedades do item:', properties);
+                console.log('Campo Pessoas alocadas:', properties['Pessoas alocadas']);
+                console.log('Campo Projetos:', properties.Projetos);
+                
+                if (isRolesData) {
+                    // Fetch person data for "Pessoas alocadas"
+                    let peopleData: { id: string; title: string }[] = [];
+                    if (properties['Pessoas alocadas']?.relation) {
+                        peopleData = await Promise.all(properties['Pessoas alocadas'].relation.map(async (person: any) => {
+                            try {
+                                const personResponse = await fetch(`/api/notion?pageId=${person.id}&notionKey=${encodeURIComponent(apiKey)}`);
+                                const personData = await personResponse.json();
+                                return {
+                                    id: person.id,
+                                    title: personData.properties?.Name?.title?.[0]?.plain_text || 
+                                          personData.properties?.Nome?.title?.[0]?.plain_text || 
+                                          personData.properties?.name?.title?.[0]?.plain_text || 
+                                          'Sem nome'
+                                };
+                            } catch (error) {
+                                console.error('Erro ao buscar dados da pessoa:', error);
+                                return {
+                                    id: person.id,
+                                    title: 'Erro ao carregar'
+                                };
+                            }
+                        }));
+                    }
+
+                    // Para a base de papéis
+                    const roleData = {
+                        RoleID: properties.RoleID?.unique_id?.number || '',
+                        RoleName: properties.Papel?.title?.[0]?.plain_text || properties.RoleName?.rich_text?.[0]?.plain_text || '',
+                        CircleID: properties.CircleID?.rollup?.array?.[0]?.unique_id?.number || '',
+                        Purpose: properties.Propósito?.rich_text?.[0]?.plain_text || '',
+                        Responsibilities: properties.Responsabilidades?.rich_text?.[0]?.plain_text || '',
+                        'Pessoas alocadas': peopleData,
+                        pageId: item.id // Store the actual Notion page ID
+                    };
+                    console.log('Dados processados do papel:', roleData);
+                    return roleData;
+                } else {
+                    // Para a base de círculos
+                    return {
+                        CircleID: properties.CircleID?.unique_id?.number || '',
+                        CircleName: properties.CircleName?.title?.[0]?.plain_text || '',
+                        Purpose: properties.Propósito?.rich_text?.[0]?.plain_text || '',
+                        Responsibilities: properties.Responsabilidades?.rich_text?.[0]?.plain_text || '',
+                    };
+                }
+            }));
+
+            const filteredResults = processedResults.filter(Boolean);
+
+            if (isRolesData) {
+                setRolesData(filteredResults);
+            } else {
+                setCirclesData(filteredResults);
+            }
+
+        } catch (error: any) {
+            console.error('Erro ao processar dados:', error);
+            setError(error.message);
         } finally {
             setLoading(false);
         }
@@ -419,11 +503,11 @@ export default function NotionToD3Converter() {
                                 <div>
                                     <div className="flex items-center justify-between mb-1">
                                         <label htmlFor="notionKey" className="block text-sm font-medium text-gray-700">
-                                            Chave da API do Notion
+                                            Chave da API do Notion *
                                         </label>
                                         {isUsingEnvKey && !notionKey && (
-                                            <span className="text-xs text-green-600 bg-green-50 px-2 py-1 rounded">
-                                                Usando chave do ambiente
+                                            <span className="text-xs text-yellow-600 bg-yellow-50 px-2 py-1 rounded">
+                                                A chave do ambiente não será usada
                                             </span>
                                         )}
                                     </div>
@@ -435,13 +519,12 @@ export default function NotionToD3Converter() {
                                             setNotionKey(e.target.value);
                                             setIsUsingEnvKey(false);
                                         }}
-                                        placeholder={isUsingEnvKey && !notionKey ? "Chave do ambiente em uso" : "Insira sua chave da API do Notion"}
+                                        placeholder="Insira sua chave da API do Notion"
                                         className="mt-1"
+                                        required
                                     />
                                     <p className="mt-1 text-xs text-gray-500">
-                                        {isUsingEnvKey && !notionKey 
-                                            ? "A chave do ambiente está sendo usada. Para usar uma chave diferente, insira-a acima."
-                                            : "Opcional. Se não fornecida, será usada a chave do ambiente."}
+                                        * Obrigatório. A chave da API do Notion deve ser inserida aqui para que a aplicação funcione corretamente.
                                     </p>
                                 </div>
                                 <div>
@@ -507,8 +590,8 @@ export default function NotionToD3Converter() {
                                     className="w-48 px-3 py-1 text-sm border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                                     onChange={(e) => {
                                         const searchTerm = e.target.value;
-                                        const node = d3.select(svgRef.current).selectAll("g");
-                                        node.selectAll("circle")
+                                        const node = d3.select(svgRef.current).selectAll<SVGGElement, d3.HierarchyNode<HierarchyNode>>("g");
+                                        node.selectAll<SVGCircleElement, d3.HierarchyNode<HierarchyNode>>("circle")
                                             .style("fill", d => {
                                                 if (d.depth === 0) return "#4f46e5"; // Círculo raiz
                                                 if (d.depth === 1) return "#10b981"; // Círculos

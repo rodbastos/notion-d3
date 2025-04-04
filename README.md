@@ -1,70 +1,76 @@
-# Notion to D3.js Converter
+# Circles Visualization
 
-An interactive web application that visualizes Notion database hierarchies using D3.js. This tool creates dynamic, interactive circle visualizations directly from your Notion data, allowing you to explore and understand your organizational structure.
+Este projeto é uma visualização interativa de círculos e papéis organizacionais, utilizando dados do Notion e D3.js.
 
-## Features
+## Como Usar
 
-- Real-time visualization of Notion database hierarchies
-- Interactive circle visualization with D3.js
-- Search functionality for roles and people
-- Responsive design with modern UI
-- Optional environment configuration
-
-## Required Notion Database Structure
-
-### Circles Database
-Required properties:
-- `CircleName` (title): Name of the circle
-- `CircleID` (number): Unique identifier for the circle
-- `Purpose` (text, optional): The circle's purpose
-- `Responsibilities` (text, optional): The circle's responsibilities
-- `Projects` (text, optional): Related projects
-
-### Roles Database
-Required properties:
-- `RoleName` (title): Name of the role
-- `RoleID` (number): Unique identifier for the role
-- `CircleID` (number): ID of the circle this role belongs to
-- `Purpose` (text, optional): The role's purpose
-- `Responsibilities` (text, optional): List of responsibilities
-- `Pessoas alocadas` (relation): Relation to a People/Users database
-- `Area` (text, optional): Area or department
-
-## Setup
-
-1. Clone the repository
-```bash
-git clone https://github.com/rodbastos/notion-d3.git
-cd notion-d3
-```
-
-2. Install dependencies
+1. Clone o repositório
+2. Instale as dependências:
 ```bash
 npm install
 ```
 
-3. Set up environment variables
-- Copy `.env.example` to `.env.local`
-- Add your Notion API key
-
-4. Run the development server
+3. Execute o projeto:
 ```bash
 npm run dev
 ```
 
-## Environment Variables
+4. Acesse a aplicação em `http://localhost:3000`
+5. **IMPORTANTE**: Você precisará inserir sua chave da API do Notion diretamente na interface do frontend. A chave não será armazenada no servidor.
+6. Insira os IDs dos bancos de dados de Papéis e Círculos do Notion
+7. Clique em "Buscar Dados do Notion" para carregar a visualização
 
-- `NOTION_KEY`: Your Notion API integration token (this is a server-side secret)
-- `NEXT_PUBLIC_ROLES_DATABASE_ID` (optional): Default Roles database ID
-- `NEXT_PUBLIC_CIRCLES_DATABASE_ID` (optional): Default Circles database ID
+## Como Obter os IDs dos Bancos de Dados do Notion
 
-> **Security Note**: The `NOTION_KEY` is a server-side secret and should never be exposed to the client. It's used only in the API routes to make authenticated requests to Notion.
+Para obter o ID de um banco de dados do Notion:
 
-## Deploy on Vercel
+1. Abra o banco de dados no Notion
+2. Clique nos três pontos (...) no canto superior direito
+3. Selecione "Copiar link"
+4. O ID é a parte do link entre o nome do workspace e o nome do banco de dados
+   - Exemplo: `https://www.notion.so/workspace/1234567890abcdef1234567890abcdef?v=...`
+   - O ID neste caso seria: `1234567890abcdef1234567890abcdef`
 
-The easiest way to deploy this app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js).
+Você precisará obter dois IDs:
+- ID do banco de dados de Papéis
+- ID do banco de dados de Círculos
 
-1. Push your code to GitHub
-2. Import the project in Vercel
-3. Add the required environment variables
-4. Deploy! 
+## Estrutura do Banco de Dados do Notion
+
+### Banco de Dados de Círculos
+Campos obrigatórios:
+- `CircleName` (título): Nome do círculo
+- `CircleID` (número): Identificador único do círculo
+- `Purpose` (texto, opcional): Propósito do círculo
+- `Responsibilities` (texto, opcional): Responsabilidades do círculo
+- `Projects` (texto, opcional): Projetos relacionados
+
+### Banco de Dados de Papéis
+Campos obrigatórios:
+- `RoleName` (título): Nome do papel
+- `RoleID` (número): Identificador único do papel
+- `CircleID` (número): ID do círculo ao qual o papel pertence
+- `Purpose` (texto, opcional): Propósito do papel
+- `Responsibilities` (texto, opcional): Lista de responsabilidades
+- `Pessoas alocadas` (relação): Relação com o banco de dados de Pessoas/Usuários
+- `Area` (texto, opcional): Área ou departamento
+
+## Tecnologias Utilizadas
+
+- Next.js
+- TypeScript
+- D3.js
+- Tailwind CSS
+- Notion API
+
+## Features
+
+- Visualização em tempo real da hierarquia de dados do Notion
+- Visualização interativa de círculos com D3.js
+- Funcionalidade de busca para papéis e pessoas
+- Design responsivo com interface moderna
+- Segurança: a chave da API é usada apenas no frontend e não é armazenada no servidor
+
+## Deploy
+
+O projeto pode ser facilmente implantado em qualquer plataforma que suporte Next.js, como Vercel, Netlify ou Railway. Não é necessário configurar nenhuma variável de ambiente no servidor, pois toda a autenticação é feita diretamente no frontend. 
